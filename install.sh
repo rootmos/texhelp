@@ -37,12 +37,14 @@ cat "$PROFILE_TEMPLATE"  \
     | sed 's,%YEAR%,'"$YEAR"',' \
     | tee "$PROFILE"
 
+PLATFORM=$(./install-tl -print-platform)
+
 ./install-tl \
-    -repository="ctan" \
+    -repository=${TEXHELP_REPOSITORY-ctan} \
     -profile="$PROFILE"
 
 cat <<EOF > "$DESTDIR/$YEAR/.env"
-PATH=$DESTDIR/$YEAR/bin/x86_64-linux:\$PATH
+PATH=$DESTDIR/$YEAR/bin/$PLATFORM:\$PATH
 MANPATH=$DESTDIR/$YEAR/texmf-dist/doc/man:\$MANPATH
 INFOPATH=$DESTDIR/$YEAR/texmf-dist/doc/info:\$INFOPATH
 EOF

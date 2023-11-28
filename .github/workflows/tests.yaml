@@ -1,0 +1,47 @@
+name: Tests
+on:
+  push:
+  schedule:
+    - cron: "0 0 7 * *"
+
+jobs:
+  tests:
+    strategy:
+      matrix:
+        distro: [ "alpine:latest", "ubuntu:latest", "archlinux:latest" ]
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    container:
+      image: ${{ matrix.distro }}
+    env:
+      TEXLIVE_INSTALL_ENV_NOCHECK: 1
+      TEXHELP_REPOSITORY: https://mirrors.mit.edu/CTAN/systems/texlive/tlnet
+    steps:
+    - name: Checkout prepare script
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+        sparse-checkout: .github/prepare.sh
+        sparse-checkout-cone-mode: false
+
+    - name: Prepare build environment
+      run: .github/prepare.sh -ut | tee -a "$GITHUB_ENV"
+
+    - name: Check out repository code
+      uses: actions/checkout@v4
+
+    - name: Run installer
+      run: ./install.sh
+
+    - name: Try activating the environment
+      run: |
+        . .texlive/bin/activate
+        latex --version
+
+    - name: Run tlmgr update
+      run: |
+        . .texlive/bin/activate
+        tlmgr update --all
+
+    - name: Run test
+      run: .github/test.sh
