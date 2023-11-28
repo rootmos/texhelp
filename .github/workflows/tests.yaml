@@ -38,5 +38,10 @@ jobs:
         . .texlive/bin/activate
         latex --version
 
+    - name: Run tlmgr update
+      run: |
+        . .texlive/bin/activate
+        tlmgr update --all
+
     - name: Run test
       run: .github/test.sh
