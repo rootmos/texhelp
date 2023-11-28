@@ -42,6 +42,9 @@ if [ "$DISTRO" = "Arch" ] || command -v pacman >/dev/null; then
     fi
     PKGs="bash python"
     PKGs="$PKGs perl"
+    if [ -n "$TESTS" ]; then
+        PKGs="$PKGs poppler util-linux"
+    fi
     $SUDO pacman -S --noconfirm $PKGs 1>&2
 elif [ "$DISTRO" = "Alpine" ] || command -v pacman >/dev/null; then
     if [ -n "$UPDATE" ]; then
@@ -49,6 +52,9 @@ elif [ "$DISTRO" = "Alpine" ] || command -v pacman >/dev/null; then
     fi
     PKGs="bash python3"
     PKGs="$PKGs perl wget"
+    if [ -n "$TESTS" ]; then
+        PKGs="$PKGs poppler-utils uuidgen"
+    fi
     $SUDO apk add $PKGs 1>&2
 elif [ "$DISTRO" = "Ubuntu" ] || command -v apt-get >/dev/null; then
     if [ -n "$UPDATE" ]; then
@@ -56,6 +62,9 @@ elif [ "$DISTRO" = "Ubuntu" ] || command -v apt-get >/dev/null; then
     fi
     PKGs="bash python3"
     PKGs="$PKGs perl wget"
+    if [ -n "$TESTS" ]; then
+        PKGs="$PKGs poppler-utils uuid-runtime"
+    fi
     $SUDO apt-get install --yes \
         --no-install-recommends --no-install-suggests \
         1>&2  $PKGs

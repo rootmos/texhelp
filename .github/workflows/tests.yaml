@@ -23,7 +23,7 @@ jobs:
         sparse-checkout-cone-mode: false
 
     - name: Prepare build environment
-      run: .github/prepare.sh -u | tee -a "$GITHUB_ENV"
+      run: .github/prepare.sh -ut | tee -a "$GITHUB_ENV"
 
     - name: Check out repository code
       uses: actions/checkout@v4
@@ -33,3 +33,5 @@ jobs:
     - run: |
         . .texlive/bin/activate
         latex --version
+
+    - run: .github/test.sh
