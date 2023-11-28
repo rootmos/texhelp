@@ -1,0 +1,8 @@
+[
+    {
+        "sha256": "d97bdb3b1903428e56373e70861b24db448243d74d950cdff96f4e888f008605",
+        "target": "tl2023.tar.gz",
+        "timestamp": "2023-11-28T07:37:41+01:00",
+        "url": "ftp://tug.org/historic/systems/texlive/2023/install-tl-unx.tar.gz"
+    }
+]

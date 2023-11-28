@@ -1,0 +1,220 @@
+#!/usr/bin/env python3
+
+import argparse
+import hashlib
+import os
+import urllib.request
+import datetime
+import json
+
+import logging
+logger = logging.getLogger(__name__)
+
+whoami = "fetch"
+env_prefix = f"{whoami.upper()}_"
+
+def env(var, default=None):
+    return os.environ.get(env_prefix + var, default)
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+            description="One script to fetch them all and in /tmp bind them.",
+            formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+    parser.add_argument("--log", default=env("LOG_LEVEL", "WARN"), help="set log level")
+    parser.add_argument("--log-file", metavar="FILE", default=env("LOG_FILE"), help="redirect stdout and stderr to FILE")
+
+    parser.add_argument("--manifest", metavar="MANIFEST", default=env("MANIFEST"))
+    parser.add_argument("--root", metavar="ROOT", default=env("ROOT"))
+
+    subparsers = parser.add_subparsers(dest="cmd")
+
+    add_cmd = subparsers.add_parser("add")
+
+    add_cmd.add_argument("--sha256", metavar="SHA256")
+    add_cmd.add_argument("url", metavar="URL")
+    add_cmd.add_argument("target", metavar="TARGET")
+
+    download_cmd = subparsers.add_parser("download")
+    download_cmd.add_argument("target", metavar="TARGET", nargs="*")
+
+    return parser.parse_args()
+
+def setup_logger(level):
+    l = logging.getLogger("fetch")
+    l.setLevel(level)
+
+    ch = logging.StreamHandler()
+    ch.setLevel(level)
+
+    f = logging.Formatter(fmt="%(asctime)s:%(name)s:%(levelname)s %(message)s", datefmt="%Y-%m-%dT%H:%M:%S%z")
+    ch.setFormatter(f)
+
+    l.addHandler(ch)
+
+    return l
+
+def download(url, target=None):
+    m = hashlib.sha256()
+    if target is None:
+        logger.info(f"fetching: {url}")
+    else:
+        logger.info(f"fetching: {url} -> {target.name}")
+
+    with urllib.request.urlopen(url) as f:
+        while True:
+            bs = f.read(4096)
+            if len(bs) == 0:
+                break
+            logger.debug(f"fetching; {url}: {len(bs)} bytes")
+            m.update(bs)
+            if target:
+                target.write(bs)
+    sha256 = m.hexdigest()
+    logger.info(f"fetched; {url}: SHA256 {sha256}")
+    return sha256
+
+def sha256_file(path):
+    with open(path, "rb") as f:
+        m = hashlib.sha256()
+        while True:
+            bs = f.read(4096)
+            if len(bs) == 0:
+                break
+            m.update(bs)
+        return m.hexdigest()
+
+class Manifest:
+    def __init__(self, path):
+        self.path = path
+
+        self._items = {}
+        if os.path.exists(self.path):
+            logger.debug(f"loading manifest: {self.path}")
+            with open(self.path, "r") as f:
+                for i in map(Item.from_dict, json.load(f)):
+                    self._items[i.target] = i
+        else:
+            logger.debug(f"empty manifest intended for: {self.path}")
+
+    def __contains__(self, item):
+        if isinstance(item, Item):
+            item = item.target
+        return item in self._items
+
+    def __getitem__(self, item):
+        if isinstance(item, Item):
+            item = item.target
+        return self._items[item]
+
+    def items(self):
+        yield from self._items.values()
+
+    def add(self, item):
+        if item.target in self._items:
+            raise NotImplementedError()
+        self._items[item.target] = item
+
+    def to_dict(self):
+        items = sorted(self._items.values(), key=lambda i: i.target)
+        items = map(lambda i: i.to_dict(), items)
+        return list(items)
+
+    def save(self):
+        logger.debug(f"saving manifest: {self.path}")
+        with open(self.path, "w") as f:
+            json.dump(manifest.to_dict(), f, sort_keys=True, indent=4)
+
+class Item:
+    def __init__(self, url, target, sha256=None, timestamp=None):
+        self.url = url
+        self.target = target
+        self.sha256 = sha256
+        self.timestamp = timestamp
+        self.local = None
+
+    def path(self, root=None):
+        return os.path.join(root or os.getcwd(), self.target)
+
+    def exists(self, root=None):
+        return os.path.exists(self.path(root))
+
+    def download(self, root=None):
+        path = self.path(root)
+        self.timestamp = datetime.datetime.now().astimezone()
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "xb") as f:
+            self.sha256 = download(self.url, f)
+        self.local = path
+        return self
+
+    def verify(self, root=None, url=None, sha256=None):
+        if url is not None and self.url != url:
+            raise RuntimeError("url doesn't match manifest", url, self.url)
+
+        if sha256 is not None and self.sha256 != sha256:
+            raise RuntimeError("sha256 doesn't match manifest", sha256, self.sha256)
+
+        path = self.path(root)
+        logger.debug(f"verifying: {path}")
+        h = sha256_file(path)
+        if self.sha256 != h:
+            raise RuntimeError(f"target checksum failed", path, h, self.sha256)
+        self.local = path
+        return self
+
+    def to_dict(self):
+        d = {
+            "target": self.target,
+            "url": self.url,
+            "sha256": self.sha256,
+            "timestamp": self.timestamp.isoformat(timespec="seconds"),
+        }
+
+        return d
+
+    @staticmethod
+    def from_dict(d):
+        return Item(
+            target = d["target"],
+            url = d["url"],
+            sha256 = d["sha256"],
+            timestamp = datetime.datetime.fromisoformat(d["timestamp"]),
+        )
+
+if __name__ == "__main__":
+    args = parse_args()
+    if args.log_file is not None:
+        sys.stderr = sys.stdout = open(args.log_file, "a")
+    logger = setup_logger(args.log.upper())
+    logger.debug(f"args: {args}")
+
+    root = args.root or os.getcwd()
+    manifest = Manifest(args.manifest or os.path.join(root, ".fetch.json"))
+
+    if args.cmd == "add":
+        target = os.path.relpath(os.path.join(root, args.target), start=root)
+        if target in manifest:
+            item = manifest[target].verify(url=args.url, sha256=args.sha256, root=root)
+        else:
+            item = Item(url=args.url, target=target).download(root=root)
+            manifest.add(item)
+        print(os.path.relpath(i.local, start=root))
+        manifest.save()
+    elif args.cmd == None or args.cmd == "download":
+        items = set()
+        if vars(args).get("target"):
+            for i in manifest.items():
+                if i.target in args.target:
+                    items.add(i)
+        else:
+            items = manifest.items()
+
+        for i in items:
+            if i.exists(root=root):
+                i.verify(root=root)
+            else:
+                i.download(root=root)
+            print(os.path.relpath(i.local, start=root))
+    else:
+        raise RuntimeError(f"unexpected command: {args.cmd}")
