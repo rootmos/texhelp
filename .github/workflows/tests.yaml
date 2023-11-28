@@ -28,10 +28,13 @@ jobs:
     - name: Check out repository code
       uses: actions/checkout@v4
 
-    - run: ./install.sh
+    - name: Run installer
+      run: ./install.sh
 
-    - run: |
+    - name: Try activating the environment
+      run: |
         . .texlive/bin/activate
         latex --version
 
-    - run: .github/test.sh
+    - name: Run test
+      run: .github/test.sh

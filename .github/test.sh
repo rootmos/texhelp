@@ -31,9 +31,20 @@ $NOTHING_UP_MY_SLEAVE
 \\end{document}
 EOF
 
+echo 1>&2 "run pdflatex..."
 pdflatex foo.tex
 
+echo 1>&2 "run pdftotex..."
 pdftotext foo.pdf
 
-grep -cq 'Foobar!' foo.txt
-grep -cq "$NOTHING_UP_MY_SLEAVE" foo.txt
+echo 1>&2 "checking generated pdf..."
+
+if ! grep -cq 'Foobar!' foo.txt; then
+    echo 1>&2 "fixed string not found!"
+    exit 1
+fi
+
+if ! grep -cq "$NOTHING_UP_MY_SLEAVE" foo.txt; then
+    echo 1>&2 "generated string not found!"
+    exit 1
+fi
