@@ -4,8 +4,8 @@ set -o nounset -o pipefail -o errexit
 
 SCRIPT_DIR=$(realpath "$0" | xargs dirname)
 
-DESTDIR=${1-$(realpath .)/.texlive}
-DOTDIR=${2-$DESTDIR/dot}
+DESTDIR=${1-${DESTDIR-$(realpath .)/.texlive}}
+DOTDIR=${2-${DOTDIR-$DESTDIR/dot}}
 
 if [ -e "$DESTDIR" ]; then
     echo 1>&2 "DESTDIR already exists: $DESTDIR"
