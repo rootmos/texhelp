@@ -8,8 +8,14 @@ DESTDIR=${1-${DESTDIR-$(realpath .)/.texlive}}
 DOTDIR=${2-${DOTDIR-$DESTDIR/dot}}
 
 if [ -e "$DESTDIR" ]; then
-    echo 1>&2 "DESTDIR already exists: $DESTDIR"
-    exit 1
+    if [ -n "${TEXHELP_FORCE-}" ]; then
+        unset TEXHELP_FORCE
+        echo 1>&2 "removing existing DESTDIR: $DESTDIR"
+        rm -rf "$DESTDIR"
+    else
+        echo 1>&2 "DESTDIR already exists: $DESTDIR"
+        exit 1
+    fi
 fi
 
 if [ -e "$DOTDIR" ]; then
@@ -39,9 +45,13 @@ cat "$PROFILE_TEMPLATE"  \
 
 PLATFORM=$(./install-tl -print-platform)
 
-./install-tl \
-    -repository=${TEXHELP_REPOSITORY-ctan} \
-    -profile="$PROFILE"
+ARGS=()
+ARGS+=("-profile=$PROFILE")
+
+ARGS+=("-repository=${TEXHELP_REPOSITORY-ctan}")
+unset TEXHELP_REPOSITORY
+
+./install-tl "${ARGS[@]}"
 
 cat <<EOF > "$DESTDIR/$YEAR/.env"
 PATH=$DESTDIR/$YEAR/bin/$PLATFORM:\$PATH
@@ -53,7 +63,7 @@ mkdir -p "$DESTDIR/bin"
 cat <<EOF > "$DESTDIR/bin/activate"
 #!/bin/sh
 set -a
-YEAR=\${1-$YEAR}
+YEAR=\${YEAR-$YEAR}
 . "$DESTDIR/\$YEAR/.env"
 set +a
 export PS1="(tl\$YEAR) \$PS1"
