@@ -23,7 +23,7 @@ if [ -e "$DOTDIR" ]; then
     exit 1
 fi
 
-YEAR=2023
+YEAR=2024
 TARBALL=tl$YEAR.tar.gz
 "$SCRIPT_DIR/fetch" --root="$SCRIPT_DIR" download "$TARBALL"
 
@@ -54,9 +54,9 @@ unset TEXHELP_REPOSITORY
 ./install-tl "${ARGS[@]}"
 
 cat <<EOF > "$DESTDIR/$YEAR/.env"
-PATH=$DESTDIR/$YEAR/bin/$PLATFORM:\$PATH
-MANPATH=$DESTDIR/$YEAR/texmf-dist/doc/man:\$MANPATH
-INFOPATH=$DESTDIR/$YEAR/texmf-dist/doc/info:\$INFOPATH
+PATH=$DESTDIR/$YEAR/bin/$PLATFORM:\${PATH-}
+MANPATH=$DESTDIR/$YEAR/texmf-dist/doc/man:\${MANPATH-}
+INFOPATH=$DESTDIR/$YEAR/texmf-dist/doc/info:\${INFOPATH-}
 EOF
 
 mkdir -p "$DESTDIR/bin"
@@ -66,7 +66,9 @@ set -a
 YEAR=\${YEAR-$YEAR}
 . "$DESTDIR/\$YEAR/.env"
 set +a
-export PS1="(tl\$YEAR) \$PS1"
+if [ -n "\${PS1-}" ]; then
+    export PS1="(tl\$YEAR) \$PS1"
+fi
 EOF
 chmod +x "$DESTDIR/bin/activate"
 

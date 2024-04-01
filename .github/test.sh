@@ -9,9 +9,7 @@ trap 'rm -rf $TMP' EXIT
 
 cd "$TMP"
 
-set +o nounset
 . "$SCRIPT_DIR/../.texlive/bin/activate"
-set -o nounset
 
 tlmgr install etoolbox
 
