@@ -1,0 +1,78 @@
+#!/bin/bash
+
+set -o nounset -o pipefail -o errexit
+
+SCRIPT_DIR=$(readlink -f "$0" | xargs dirname)
+
+ACTION=
+FORCE=
+while getopts "cideuf-" OPT; do
+    case $OPT in
+        c) ACTION=compile ;;
+        i) ACTION=install ;;
+        d) ACTION=deps ;;
+        e) ACTION=exec ;;
+        u) ACTION=update ;;
+        f) FORCE=1 ;;
+        -) break ;;
+        ?) exit 2 ;;
+    esac
+done
+shift $((OPTIND-1))
+
+if [ -z "$ACTION" ]; then
+    echo 1>&2 "specify an action"
+    exit 1
+fi
+
+if [ "$ACTION" = "install" ]; then
+    if [ -n "$FORCE" ]; then
+        export TEXHELP_FORCE=1
+    fi
+
+    if [ -f "$SCRIPT_DIR/install.sh" ]; then
+        "$SCRIPT_DIR/install.sh"
+    else
+        TMP=$(mktemp -d)
+        trap 'rm -rf $TMP' EXIT
+        git clone --depth=1 "https://github.com/rootmos/texhelp" "$TMP"
+        "$TMP/install.sh"
+    fi
+
+    ACTION=deps
+fi
+
+resolve() {
+    local dir
+    dir=$PWD
+    while true; do
+        if [ -e "$dir/$1" ]; then
+            echo "$dir/$1"
+            return 0
+        fi
+
+        if [ -e "$dir/.git" ]; then
+            break
+        fi
+
+        dir=$(readlink -f "$dir/..")
+    done
+    echo 1>&2 "unable to recursively resolve: $1"
+    return 1
+}
+
+if [ -z "${TEXHELP_DOTDIR-}" ]; then
+    DOTDIR=$(resolve ".texlive")
+    . "$DOTDIR/bin/activate"
+fi
+
+if [ "$ACTION" = "compile" ]; then
+    pdflatex --halt-on-error --interaction=nonstopmode "$@"
+elif [ "$ACTION" = "deps" ]; then
+    DEPS=$(resolve "tl.deps")
+    xargs tlmgr install <"$DEPS"
+elif [ "$ACTION" = "update" ]; then
+    tlmgr update --all
+elif [ "$ACTION" = "exec" ]; then
+    "$@"
+fi

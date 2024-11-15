@@ -60,6 +60,9 @@ INFOPATH=$DESTDIR/$YEAR/texmf-dist/doc/info:\${INFOPATH-}
 EOF
 
 mkdir -p "$DESTDIR/bin"
+
+cp "$SCRIPT_DIR/texhelp" "$DESTDIR/bin"
+
 cat <<EOF > "$DESTDIR/bin/activate"
 #!/bin/sh
 set -a
@@ -69,6 +72,7 @@ set +a
 if [ -n "\${PS1-}" ]; then
     export PS1="(tl\$YEAR) \$PS1"
 fi
+export TEXHELP_DOTDIR="$DOTDIR"
 EOF
 chmod +x "$DESTDIR/bin/activate"
 
