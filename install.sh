@@ -4,8 +4,8 @@ set -o nounset -o pipefail -o errexit
 
 SCRIPT_DIR=$(realpath "$0" | xargs dirname)
 
-DESTDIR=${1-${DESTDIR-$(realpath .)/.texlive}}
-DOTDIR=${2-${DOTDIR-$DESTDIR/dot}}
+DESTDIR=${1-${TEXHELP_DESTDIR-$(realpath .)/.texhelp}}
+DOTDIR=$DESTDIR/dot
 
 if [ -e "$DESTDIR" ]; then
     if [ -n "${TEXHELP_FORCE-}" ]; then
@@ -49,21 +49,19 @@ ARGS=()
 ARGS+=("-profile=$PROFILE")
 
 ARGS+=("-repository=${TEXHELP_REPOSITORY-ctan}")
-unset TEXHELP_REPOSITORY
-
-./install-tl "${ARGS[@]}"
+env \
+    -u TEXHELP_REPOSITORY \
+    -u TEXHELP_DESTDIR \
+    -u TEXHELP_FORCE \
+    ./install-tl "${ARGS[@]}"
 
 cat <<EOF > "$DESTDIR/$YEAR/.env"
-PATH=$DESTDIR/$YEAR/bin/$PLATFORM:\${PATH-}
+PATH=$DESTDIR/bin:$DESTDIR/$YEAR/bin/$PLATFORM:\${PATH-}
 MANPATH=$DESTDIR/$YEAR/texmf-dist/doc/man:\${MANPATH-}
 INFOPATH=$DESTDIR/$YEAR/texmf-dist/doc/info:\${INFOPATH-}
 EOF
 
-mkdir -p "$DESTDIR/bin"
-
-cp "$SCRIPT_DIR/texhelp" "$DESTDIR/bin"
-
-cat <<EOF > "$DESTDIR/bin/activate"
+cat <<EOF > "$DESTDIR/activate"
 #!/bin/sh
 set -a
 YEAR=\${YEAR-$YEAR}
@@ -72,8 +70,11 @@ set +a
 if [ -n "\${PS1-}" ]; then
     export PS1="(tl\$YEAR) \$PS1"
 fi
-export TEXHELP_DOTDIR="$DOTDIR"
+export TEXHELP_ROOT="$DESTDIR"
 EOF
-chmod +x "$DESTDIR/bin/activate"
+chmod +x "$DESTDIR/activate"
 
-echo 1>&2 "activation script: $DESTDIR/bin/activate"
+mkdir -p "$DESTDIR/bin"
+cp "$SCRIPT_DIR/texhelp" "$DESTDIR/bin"
+
+echo 1>&2 "activation script: $DESTDIR/activate"

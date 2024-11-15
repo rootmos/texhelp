@@ -61,9 +61,9 @@ resolve() {
     return 1
 }
 
-if [ -z "${TEXHELP_DOTDIR-}" ]; then
-    DOTDIR=$(resolve ".texlive")
-    . "$DOTDIR/bin/activate"
+if [ -z "${TEXHELP_ROOT-}" ]; then
+    ROOT=$(resolve ".texhelp")
+    . "$ROOT/activate"
 fi
 
 if [ "$ACTION" = "compile" ]; then

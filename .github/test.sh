@@ -9,7 +9,7 @@ trap 'rm -rf $TMP' EXIT
 
 cd "$TMP"
 
-. "$SCRIPT_DIR/../.texlive/bin/activate"
+. "$SCRIPT_DIR/../.texhelp/activate"
 
 tlmgr install etoolbox
 

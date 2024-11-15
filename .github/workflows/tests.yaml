@@ -34,12 +34,12 @@ jobs:
     - name: Try activating the environment
       run: |
         set -o nounset -o errexit
-        . .texlive/bin/activate
+        . .texhelp/activate
         latex --version
 
     - name: Run tlmgr update
       run: |
-        . .texlive/bin/activate
+        . .texhelp/activate
         tlmgr update --all
 
     - name: Run test
