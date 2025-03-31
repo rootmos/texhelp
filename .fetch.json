@@ -10,5 +10,11 @@
         "target": "tl2024.tar.gz",
         "timestamp": "2024-04-01T11:03:18+02:00",
         "url": "ftp://tug.org/historic/systems/texlive/2024/install-tl-unx.tar.gz"
+    },
+    {
+        "sha256": "9938f192af75f792e84282580cce6eedac32969e0e07b33cb39ca1b699e948b6",
+        "target": "tl2025.tar.gz",
+        "timestamp": "2025-03-31T10:16:35+02:00",
+        "url": "ftp://tug.org/historic/systems/texlive/2025/install-tl-unx.tar.gz"
     }
 ]

@@ -23,7 +23,7 @@ if [ -e "$DOTDIR" ]; then
     exit 1
 fi
 
-YEAR=2024
+YEAR=2025
 TARBALL=tl$YEAR.tar.gz
 "$SCRIPT_DIR/fetch" --root="$SCRIPT_DIR" download "$TARBALL"
 
