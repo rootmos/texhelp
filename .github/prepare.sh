@@ -39,6 +39,7 @@ echo "distro: $DISTRO" 1>&2
 if [ "$DISTRO" = "Arch" ] || command -v pacman >/dev/null; then
     if [ -n "$UPDATE" ]; then
         $SUDO pacman -Sy 1>&2
+        $SUDO pacman -S pacman --noconfirm 1>&2
     fi
     PKGs="bash python"
     PKGs="$PKGs perl"
