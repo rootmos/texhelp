@@ -2,8 +2,6 @@
 
 set -o nounset -o pipefail -o errexit
 
-SCRIPT_DIR=$(readlink -f "$0" | xargs dirname)
-
 ACTION=
 FORCE=
 while getopts "cideuf-" OPT; do
@@ -30,16 +28,10 @@ if [ "$ACTION" = "install" ]; then
         export TEXHELP_FORCE=1
     fi
 
-    if [ -f "$SCRIPT_DIR/install.sh" ]; then
-        "$SCRIPT_DIR/install.sh"
-    else
-        TMP=$(mktemp -d)
-        trap 'rm -rf $TMP' EXIT
-        git clone --depth=1 "https://github.com/rootmos/texhelp" "$TMP"
-        "$TMP/install.sh"
-    fi
-
-    ACTION=deps
+    TMP=$(mktemp -d)
+    trap 'rm -rf $TMP' EXIT
+    git clone --depth=1 "https://github.com/rootmos/texhelp" "$TMP"
+    "$TMP/install.sh"
 fi
 
 resolve() {
@@ -63,6 +55,7 @@ resolve() {
 
 if [ -z "${TEXHELP_ROOT-}" ]; then
     ROOT=$(resolve ".texhelp")
+    # shellcheck source=/dev/null
     . "$ROOT/activate"
 fi
 
@@ -71,6 +64,11 @@ if [ "$ACTION" = "compile" ]; then
 elif [ "$ACTION" = "deps" ]; then
     DEPS=$(resolve "tl.deps")
     xargs tlmgr install <"$DEPS"
+elif [ "$ACTION" = "install" ]; then
+    DEPS=$(resolve "tl.deps" 2>/dev/null || true)
+    if [ -n "${DEPS-}" ]; then
+        xargs tlmgr install <"$DEPS"
+    fi
 elif [ "$ACTION" = "update" ]; then
     tlmgr update --all
 elif [ "$ACTION" = "exec" ]; then
