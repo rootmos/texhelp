@@ -25,7 +25,10 @@ fi
 
 YEAR=2025
 TARBALL=tl$YEAR.tar.gz
-"$SCRIPT_DIR/fetch" --root="$SCRIPT_DIR" download "$TARBALL"
+"$SCRIPT_DIR/fetch" \
+    --manifest="$SCRIPT_DIR/texlive.json" \
+    --root="$SCRIPT_DIR" \
+    download "$TARBALL" >/dev/null
 
 TMP=$(mktemp -d)
 trap 'rm -rf $TMP' EXIT

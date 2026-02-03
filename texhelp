@@ -9,7 +9,8 @@ while getopts "cideuf-" OPT; do
         c) ACTION=compile ;;
         i) ACTION=install ;;
         d) ACTION=deps ;;
-        e) ACTION=exec ;;
+        e) # shellcheck disable=SC2209
+           ACTION=exec ;;
         u) ACTION=update ;;
         f) FORCE=1 ;;
         -) break ;;

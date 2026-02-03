@@ -9,6 +9,7 @@ trap 'rm -rf $TMP' EXIT
 
 cd "$TMP"
 
+# shellcheck source=/dev/null
 . "$SCRIPT_DIR/../.texhelp/activate"
 
 tlmgr install etoolbox
