@@ -64,11 +64,11 @@ if [ "$ACTION" = "compile" ]; then
     pdflatex --halt-on-error --interaction=nonstopmode "$@"
 elif [ "$ACTION" = "deps" ]; then
     DEPS=$(resolve "tl.deps")
-    xargs tlmgr install <"$DEPS"
+    sed 's/#.*//' "$DEPS" | sed '/^$/d' | xargs tlmgr install
 elif [ "$ACTION" = "install" ]; then
     DEPS=$(resolve "tl.deps" 2>/dev/null || true)
     if [ -n "${DEPS-}" ]; then
-        xargs tlmgr install <"$DEPS"
+        sed 's/#.*//' "$DEPS" | sed '/^$/d' | xargs tlmgr install
     fi
 elif [ "$ACTION" = "update" ]; then
     tlmgr update --all
