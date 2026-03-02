@@ -16,6 +16,7 @@ jobs:
         image: ${{ matrix.distro }}:latest
     env:
       DEPS_DISTRO: ${{ matrix.distro }}
+      TEXHELP_MIRROR: https://mirror.math.princeton.edu/pub/CTAN
     steps:
     - name: Check out preparation files
       uses: actions/checkout@v6

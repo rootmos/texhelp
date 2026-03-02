@@ -40,17 +40,14 @@ if [ -z "${TEXHELP_HISTORIC_MIRROR-}" ]; then
 fi
 echo 1>&2 "using historic mirror: $TEXHELP_HISTORIC_MIRROR"
 
-cat "$SCRIPT_DIR/texlive.json" \
-    | sed 's,https://mirror.ctan.org,'"$TEXHELP_MIRROR"',' \
-    | sed 's,ftp://tug.org,'"$TEXHELP_HISTORIC_MIRROR"',' \
-    >"$TMP/texlive.json"
+export FETCH_MANIFEST="$TMP/texlive.json"
+cp "$SCRIPT_DIR/texlive.json" "$FETCH_MANIFEST"
+sed -i 's,https://mirror.ctan.org,'"$TEXHELP_MIRROR"',' "$FETCH_MANIFEST"
+sed -i 's,ftp://tug.org,'"$TEXHELP_HISTORIC_MIRROR"',' "$FETCH_MANIFEST"
 
 YEAR=${TEXHELP_YEAR-2026}
 TARBALL=tl$YEAR.tar.gz
-"$SCRIPT_DIR/fetch" \
-    --manifest="$TMP/texlive.json" \
-    --root="$SCRIPT_DIR" \
-    download "$TARBALL" >/dev/null
+"$SCRIPT_DIR/fetch" --log=info --root="$SCRIPT_DIR" download --update "$TARBALL" >/dev/null
 
 tar xf "$SCRIPT_DIR/$TARBALL" -C "$TMP" --strip-components=1
 

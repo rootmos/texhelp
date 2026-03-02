@@ -359,6 +359,7 @@ def do_steal_this_script(args):
 
 def main():
     args = parse_args()
+    global logger
     logger = setup_logger(args.log.upper())
     logger.debug("args: %s", args)
 
