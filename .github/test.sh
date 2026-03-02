@@ -7,10 +7,12 @@ SCRIPT_DIR=$(realpath "$0" | xargs dirname)
 TMP=$(mktemp -d)
 trap 'rm -rf $TMP' EXIT
 
+DOTDIR=$(realpath "${1-"$SCRIPT_DIR/../.texhelp"}")
+
 cd "$TMP"
 
 # shellcheck source=/dev/null
-. "$SCRIPT_DIR/../.texhelp/activate"
+. "$DOTDIR/activate"
 
 tlmgr install etoolbox
 

@@ -1,0 +1,41 @@
+#!/bin/bash
+
+set -o nounset -o pipefail -o errexit
+
+SCRIPT_DIR=$(readlink -f "$0" | xargs dirname)
+ROOT=${ROOT-$(readlink -f "$SCRIPT_DIR/..")}
+
+SUDO=${SUDO-"sudo -A"}
+DOCKER=${DOCKER-docker}
+DISTRO=${DISTRO-}
+
+if [ -z "${WORKDIR-}" ]; then
+    WORKDIR=$(mktemp -d)
+    trap 'rm -rf $WORKDIR' EXIT
+else
+    mkdir -p "$WORKDIR"
+fi
+WORKDIR=$(readlink -f "$WORKDIR")
+cd "$WORKDIR"
+
+DOCKER_CONTEXT="$WORKDIR/context"
+mkdir -p "$DOCKER_CONTEXT"
+
+git -C "$ROOT" archive \
+    --format=tar --worktree-attributes \
+    HEAD \
+    | tar -xf- -C "$DOCKER_CONTEXT"
+
+ARGs=()
+ARGs+=(--progress=plain)
+ARGs+=(--file="$SCRIPT_DIR/Dockerfile")
+ARGs+=(--build-context="gha=$SCRIPT_DIR")
+
+DOCKER_IMAGE_ID_FILE="$WORKDIR/iid"
+ARGs+=(--iidfile="$DOCKER_IMAGE_ID_FILE")
+
+if [ -n "${DISTRO-}" ]; then
+    ARGs+=(--build-arg="DISTRO=$DISTRO")
+fi
+
+$SUDO $DOCKER build "${ARGs[@]}" "$DOCKER_CONTEXT"

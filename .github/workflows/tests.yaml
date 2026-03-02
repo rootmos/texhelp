@@ -7,26 +7,29 @@ on:
 jobs:
   tests:
     strategy:
+      fail-fast: false
       matrix:
-        distro: [ "alpine:latest", "ubuntu:latest", "archlinux:latest" ]
+        distro: [ "alpine", "ubuntu", "archlinux" ]
     runs-on: ubuntu-latest
     container:
-      image: ${{ matrix.distro }}
+        image: ${{ matrix.distro }}:latest
     env:
-      TEXHELP_REPOSITORY: https://mirrors.mit.edu/CTAN/systems/texlive/tlnet
+      DEPS_DISTRO: ${{ matrix.distro }}
     steps:
-    - name: Checkout prepare script
-      uses: actions/checkout@v4
+    - name: Check out preparation files
+      uses: actions/checkout@v6
       with:
-        fetch-depth: 1
-        sparse-checkout: .github/prepare.sh
+        sparse-checkout: .github/prepare
         sparse-checkout-cone-mode: false
 
-    - name: Prepare build environment
-      run: .github/prepare.sh -ut
+    - name: Prepare environment
+      run: .github/prepare -u
 
     - name: Check out repository code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
+
+    - name: Install build dependencies
+      run: .github/deps -b
 
     - name: Run installer
       run: ./install.sh
@@ -41,6 +44,9 @@ jobs:
       run: |
         . .texhelp/activate
         tlmgr update --all
+
+    - name: Install test dependencies
+      run: .github/deps -t
 
     - name: Run test
       run: .github/test.sh

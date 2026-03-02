@@ -1,0 +1,163 @@
+#!/usr/bin/env python3
+
+import argparse
+import os
+import logging
+import shutil
+import subprocess
+import sys
+import tomllib
+from typing import Callable
+
+try:
+    import argcomplete
+    has_argcomplete = True
+except ImportError:
+    has_argcomplete = False
+
+whoami = "deps"
+def env(var, default=None):
+    return os.environ.get("DEPS_" + var) or os.environ.get(var, default)
+logger = logging.getLogger(whoami)
+
+SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
+
+def setup_logger(level):
+    logger.setLevel(level.upper())
+
+    ch = logging.StreamHandler()
+    ch.setLevel(level.upper())
+
+    f = logging.Formatter(fmt="%(asctime)s:%(name)s:%(levelname)s %(message)s", datefmt="%Y-%m-%dT%H:%M:%S%z")
+    ch.setFormatter(f)
+
+    logger.addHandler(ch)
+
+def parse_args(build: Callable[[], argparse.ArgumentParser]) -> argparse.Namespace:
+    early = argparse.ArgumentParser(add_help=False)
+    main_parser = build()
+
+    for p in [ early, main_parser ]:
+        p.add_argument("--log", default=env("LOG_LEVEL", "INFO"), help="set log level")
+
+    if has_argcomplete:
+        for p in [ early, main_parser ]:
+            p.add_argument("--completion-script", action="store_true", help="print script that when sourced configures shell completion, then exit")
+
+    args, _ = early.parse_known_args()
+
+    setup_logger(args.log)
+    logger.debug("early args: %s", args)
+
+    if has_argcomplete and args.completion_script:
+        prog = os.path.basename(sys.argv[0])
+        sys.stdout.write(argcomplete.shellcode([ prog ]))
+        sys.exit(0)
+
+    if has_argcomplete:
+        argcomplete.autocomplete(main_parser)
+
+    return main_parser.parse_args()
+
+def figure_out_distribution() -> str:
+    lsb_release = shutil.which("lsb_release")
+    if lsb_release is not None:
+        [l] = subprocess.check_output([lsb_release, "-is"], text=True).splitlines()
+        distro = l.rstrip().lower()
+        logger.debug("figured out distribution (via lsb_release): %s", distro)
+        return distro
+
+    installers = {
+        "archlinux": "pacman",
+        "alpine": "apk",
+        "debian": "apt-get",
+    }
+    for d, i in installers.items():
+        if shutil.which(i):
+            logger.debug("figured out distribution (by finding %s): %s", i, d)
+            return d
+
+    raise RuntimeError("unable to figure out distribution")
+
+def main_parser() -> argparse.ArgumentParser:
+    description = "dependency installer"
+    parser = argparse.ArgumentParser(description=description, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+    parser.add_argument("--manifest", metavar="TOML", default=env("MANIFEST", os.path.join(SCRIPT_DIR, "deps.toml")), help="dependency manifest to use")
+    parser.add_argument("--distro", default=env("DISTRO"), help="target distribution")
+
+    parser.add_argument("-n", "--dry-run", action="store_true")
+    parser.add_argument("-R", "--remove", action="store_true")
+
+    targets = parser.add_argument_group("targets")
+    targets.add_argument("-b", "--build", dest="targets", action="append_const", const="build")
+    targets.add_argument("-r", "--runtime", dest="targets", action="append_const", const="runtime")
+    targets.add_argument("-t", "--tests", dest="targets", action="append_const", const="tests")
+
+    return parser
+
+def main(args):
+    distro = args.distro
+    if distro is None:
+        distro = figure_out_distribution()
+    logger.debug("distro: %s", distro)
+
+    logger.debug("manifest: %s", args.manifest)
+    with open(args.manifest, "rb") as f:
+        manifest = tomllib.load(f)
+
+    deps = set()
+    for target in args.targets or []:
+        deps.update(manifest.get(target, {}).get(distro, []))
+        deps.update(manifest.get(distro, {}).get(target, []))
+    deps = sorted(list(deps))
+
+    if not args.remove:
+        op = "install"
+    else:
+        op = "remove"
+
+    if not deps:
+        logger.info("no dependencies to %s", op)
+        return
+    logger.info("%s: %s", op, ' '.join(deps))
+
+    match distro:
+        case "archlinux":
+            cmdline = [ "pacman" ]
+            if not args.remove:
+                cmdline += [ "-S", "--needed" ]
+            else:
+                cmdline += [ "-R", "--recursive" ]
+            cmdline += [ "--noconfirm" ]
+        case "alpine":
+            cmdline = [ "apk" ]
+            if not args.remove:
+                cmdline += [ "add" ]
+            else:
+                cmdline += [ "del", "--rdepends" ]
+        case "ubuntu" | "debian":
+            cmdline = [ "apt-get", "--yes" ]
+            if not args.remove:
+                cmdline += [ "install" ]
+                cmdline += [ "--no-install-recommends", "--no-install-suggests" ]
+            else:
+                cmdline += [ "remove", "--auto-remove" ]
+        case _:
+            raise RuntimeError(f"unsupported distribution: {distro}")
+
+    cmdline += deps
+
+    if args.dry_run:
+        logger.debug("dry-run: %s", cmdline)
+        for d in deps:
+            print(d)
+        return
+
+    logger.debug("running: %s", cmdline)
+    subprocess.check_call(cmdline)
+
+if __name__ == "__main__":
+    args = parse_args(main_parser)
+    logger.debug("args: %s", args)
+    main(args)

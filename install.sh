@@ -23,15 +23,34 @@ if [ -e "$DOTDIR" ]; then
     exit 1
 fi
 
-YEAR=2025
-TARBALL=tl$YEAR.tar.gz
-"$SCRIPT_DIR/fetch" \
-    --manifest="$SCRIPT_DIR/texlive.json" \
-    --root="$SCRIPT_DIR" \
-    download "$TARBALL" >/dev/null
-
 TMP=$(mktemp -d)
 trap 'rm -rf $TMP' EXIT
+
+TEXHELP_MIRROR=${TEXHELP_MIRROR-https://mirror.ctan.org}
+echo 1>&2 "using mirror: $TEXHELP_MIRROR"
+
+if [ -z "${TEXHELP_HISTORIC_MIRROR-}" ]; then
+    # https://tug.org/historic/
+    HISTORIC_MIRRORs=()
+    HISTORIC_MIRRORs+=("https://ftp.math.utah.edu/pub/tex")
+    #HISTORIC_MIRRORs+=("https://texlive.info")
+    HISTORIC_MIRRORs+=("https://ftp.tu-chemnitz.de/pub/tug")
+    HISTORIC_MIRRORs+=("https://pi.kwarc.info")
+    TEXHELP_HISTORIC_MIRROR=${HISTORIC_MIRRORs[ $RANDOM % ${#HISTORIC_MIRRORs[@]} ]}
+fi
+echo 1>&2 "using historic mirror: $TEXHELP_HISTORIC_MIRROR"
+
+cat "$SCRIPT_DIR/texlive.json" \
+    | sed 's,https://mirror.ctan.org,'"$TEXHELP_MIRROR"',' \
+    | sed 's,ftp://tug.org,'"$TEXHELP_HISTORIC_MIRROR"',' \
+    >"$TMP/texlive.json"
+
+YEAR=${TEXHELP_YEAR-2026}
+TARBALL=tl$YEAR.tar.gz
+"$SCRIPT_DIR/fetch" \
+    --manifest="$TMP/texlive.json" \
+    --root="$SCRIPT_DIR" \
+    download "$TARBALL" >/dev/null
 
 tar xf "$SCRIPT_DIR/$TARBALL" -C "$TMP" --strip-components=1
 
@@ -51,11 +70,19 @@ PLATFORM=$(./install-tl -print-platform)
 ARGS=()
 ARGS+=("-profile=$PROFILE")
 
-ARGS+=("-repository=${TEXHELP_REPOSITORY-ctan}")
+if [ -z "${TEXHELP_REPOSITORY-}" ]; then
+    TEXHELP_REPOSITORY="$TEXHELP_MIRROR/systems/texlive/tlnet"
+fi
+echo 1>&2 "using repository: $TEXHELP_REPOSITORY"
+
+ARGS+=("-repository=$TEXHELP_REPOSITORY")
 env \
+    -u TEXHELP_HISTORIC_MIRROR \
     -u TEXHELP_REPOSITORY \
+    -u TEXHELP_MIRROR \
     -u TEXHELP_DESTDIR \
     -u TEXHELP_FORCE \
+    -u TEXHELP_YEAR \
     ./install-tl "${ARGS[@]}"
 
 cat <<EOF > "$DESTDIR/$YEAR/.env"

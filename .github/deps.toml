@@ -1,0 +1,9 @@
+[build]
+archlinux = []
+alpine = [ "perl", "wget" ]
+ubuntu = [ "wget" ]
+
+[tests]
+archlinux = [ "poppler" ]
+alpine = [ "poppler-utils", "uuidgen" ]
+ubuntu = [ "poppler-utils", "uuid-runtime" ]
