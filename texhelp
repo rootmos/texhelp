@@ -4,14 +4,17 @@ set -o nounset -o pipefail -o errexit
 
 ACTION=
 FORCE=
-while getopts "cideuf-" OPT; do
+while getopts "cmzZidufc-" OPT; do
     case $OPT in
         c) ACTION=compile ;;
+        m) ACTION=latexmk ;;
+        z) ACTION=clean ;;
+        Z) ACTION=deepclean ;;
         i) ACTION=install ;;
         d) ACTION=deps ;;
+        u) ACTION=update ;;
         e) # shellcheck disable=SC2209
            ACTION=exec ;;
-        u) ACTION=update ;;
         f) FORCE=1 ;;
         -) break ;;
         ?) exit 2 ;;
@@ -62,12 +65,18 @@ fi
 
 if [ "$ACTION" = "compile" ]; then
     pdflatex --halt-on-error --interaction=nonstopmode "$@"
-elif [ "$ACTION" = "deps" ]; then
-    DEPS=$(resolve "tl.deps")
-    sed 's/#.*//' "$DEPS" | sed '/^$/d' | xargs tlmgr install
-elif [ "$ACTION" = "install" ]; then
-    DEPS=$(resolve "tl.deps" 2>/dev/null || true)
+elif [ "$ACTION" = "latexmk" ]; then
+    latexmk -interaction=nonstopmode -pdf "$@"
+elif [ "$ACTION" = "clean" ] || [ "$ACTION" = "deepclean" ]; then
+    rm -vf *.aux *.bbl *.bcf *.blg *.fls *.run.xml *.fdb_latexmk *.log *.out *.pdf *.dvi *-SAVE-ERROR
+    if [ "$ACTION" = "deepclean" ]; then
+        rm -rf "$ROOT"
+        echo 1>&2 "removed: '$ROOT'"
+    fi
+elif [ "$ACTION" = "deps" ] || [ "$ACTION" = "install" ]; then
+    DEPS=$(resolve "tl.deps" || true)
     if [ -n "${DEPS-}" ]; then
+        echo 1>&2 "TeX Live dependencies spec: $DEPS"
         sed 's/#.*//' "$DEPS" | sed '/^$/d' | xargs tlmgr install
     fi
 elif [ "$ACTION" = "update" ]; then
