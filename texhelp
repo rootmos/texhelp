@@ -4,7 +4,7 @@ set -o nounset -o pipefail -o errexit
 
 ACTION=
 FORCE=
-while getopts "cmzZidufc-" OPT; do
+while getopts "cmzZiduefc-" OPT; do
     case $OPT in
         c) ACTION=compile ;;
         m) ACTION=latexmk ;;
