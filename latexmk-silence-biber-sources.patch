@@ -1,0 +1,39 @@
+diff -ura a/latexmk.pl b/latexmk.pl
+--- a/latexmk.pl	2026-03-12 08:43:11.104790157 +0100
++++ b/latexmk.pl	2026-03-12 09:11:41.334728247 +0100
+@@ -2481,7 +2481,7 @@
+ }
+ 
+ if ( $diagnostics || $rc_report ) {
+-    show_array( "Rc files read (in order):", @rc_files_read );
++    show_array( "Rc files read (in order):", @rc_files_read ) unless $silent;
+ }
+ 
+ if ( $bad_options > 0 ) {
+@@ -7052,7 +7052,7 @@
+     #   wrapping is always performed on the encoded byte strings, but the
+     #     place to wrap is determined according to the length in bytes or
+     #     in codepoints, as needed.
+-    print "$My_name: Getting log file '$file'\n";
++    print "$My_name: Getting log file '$file'\n" unless $silent;
+     open( my $fh, '<', $file )
+         or return 0;
+   LINE:
+@@ -8871,7 +8871,7 @@
+     
+     if ( test_gen_file( $bcf_name ) ) {
+         # then biblatex + biber is currently in use (with single .bbl file).
+-        warn "$My_name: Using biber to make bibliography file(s).\n";
++        warn "$My_name: Using biber to make bibliography file(s).\n" unless $silent;
+         $bib_program = 'biber';
+ 
+         my $bbl_base = ($bcf_name =~ s/\.bcf$//r);
+@@ -8901,7 +8901,7 @@
+                    \@found, \@not_found, \@remote );
+         my @new_sources = (@found, @not_found);
+         push @new_sources, $bcf_name;
+-        show_array( 'Sources for biber', @new_sources );
++        show_array( 'Sources for biber', @new_sources ) unless $silent;
+         if ( ! rdb_rule_exists( $from_rule ) ){
+             print "   ===Creating rule '$from_rule'\n" if ($diagnostics);
+             rdb_create_rule( $from_rule, 'external', $biber, '', 1,

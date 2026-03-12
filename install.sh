@@ -105,8 +105,9 @@ fi
 export TEXHELP_ROOT="$DESTDIR"
 EOF
 chmod +x "$DESTDIR/activate"
+echo 1>&2 "activation script: $DESTDIR/activate"
 
 mkdir -p "$DESTDIR/bin"
 cp "$SCRIPT_DIR/texhelp" "$DESTDIR/bin"
 
-echo 1>&2 "activation script: $DESTDIR/activate"
+"$SCRIPT_DIR/latexmk.sh" "$DESTDIR"

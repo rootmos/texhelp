@@ -32,10 +32,10 @@ $NOTHING_UP_MY_SLEAVE
 \\end{document}
 EOF
 
-echo 1>&2 "run pdflatex..."
-pdflatex foo.tex
+echo 1>&2 "run: texhelp -m"
+texhelp -m foo.tex
 
-echo 1>&2 "run pdftotex..."
+echo 1>&2 "run: pdftotex"
 pdftotext foo.pdf
 
 echo 1>&2 "checking generated pdf..."

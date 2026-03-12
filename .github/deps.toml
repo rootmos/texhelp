@@ -1,7 +1,7 @@
 [build]
-archlinux = []
-alpine = [ "perl", "wget" ]
-ubuntu = [ "wget" ]
+archlinux = [ "patch" ]
+alpine = [ "perl", "wget", "patch" ]
+ubuntu = [ "wget", "patch" ]
 
 [tests]
 archlinux = [ "poppler" ]
