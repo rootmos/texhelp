@@ -88,6 +88,11 @@ MANPATH=$DESTDIR/$YEAR/texmf-dist/doc/man:\${MANPATH-}
 INFOPATH=$DESTDIR/$YEAR/texmf-dist/doc/info:\${INFOPATH-}
 EOF
 
+cat <<EOF >> "$DESTDIR/$YEAR/texmf.cnf"
+
+max_print_line=1048576
+EOF
+
 cat <<EOF > "$DESTDIR/activate"
 #!/bin/sh
 set -a

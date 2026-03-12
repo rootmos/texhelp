@@ -66,7 +66,7 @@ fi
 if [ "$ACTION" = "compile" ]; then
     pdflatex --halt-on-error --interaction=nonstopmode "$@"
 elif [ "$ACTION" = "latexmk" ]; then
-    latexmk -interaction=nonstopmode -pdf "$@"
+    latexmk -interaction=nonstopmode -silent -pdf "$@"
 elif [ "$ACTION" = "clean" ] || [ "$ACTION" = "deepclean" ]; then
     rm -vf *.aux *.bbl *.bcf *.blg *.fls *.run.xml *.fdb_latexmk *.log *.out *.pdf *.dvi *-SAVE-ERROR
     if [ "$ACTION" = "deepclean" ]; then
