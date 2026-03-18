@@ -3227,7 +3227,7 @@ if ($failure_count > 0) {
             "  But normally, you will need to correct the file(s) that caused the\n",
             "  error, and then rerun latexmk.\n",
             "  In some cases, it is best to clean out generated files before rerunning\n",
-            "  latexmk after you've corrected the files.\n";
+            "  latexmk after you've corrected the files.\n" unless $silent;
     }
     exit 12;
 }
