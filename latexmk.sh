@@ -10,4 +10,4 @@ DESTDIR=${1-$PWD/.texhelp}
 tlmgr install latexmk
 
 cd "$DESTDIR/$YEAR/texmf-dist/scripts/latexmk"
-patch -Np1 <"$SCRIPT_DIR/latexmk-silence-biber-sources.patch"
+patch -Np1 <"$SCRIPT_DIR/latexmk-silence.patch"
