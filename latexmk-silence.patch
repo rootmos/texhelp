@@ -1,6 +1,6 @@
 diff -ura a/latexmk.pl b/latexmk.pl
---- a/latexmk.pl	2026-03-12 08:43:11.104790157 +0100
-+++ b/latexmk.pl	2026-03-12 09:11:41.334728247 +0100
+--- a/latexmk.pl	2026-03-18 06:28:45.521024169 +0100
++++ b/latexmk.pl	2026-03-20 11:06:17.575113057 +0100
 @@ -2481,7 +2481,7 @@
  }
  
@@ -10,6 +10,15 @@ diff -ura a/latexmk.pl b/latexmk.pl
  }
  
  if ( $bad_options > 0 ) {
+@@ -3227,7 +3227,7 @@
+             "  But normally, you will need to correct the file(s) that caused the\n",
+             "  error, and then rerun latexmk.\n",
+             "  In some cases, it is best to clean out generated files before rerunning\n",
+-            "  latexmk after you've corrected the files.\n";
++            "  latexmk after you've corrected the files.\n" unless $silent;
+     }
+     exit 12;
+ }
 @@ -7052,7 +7052,7 @@
      #   wrapping is always performed on the encoded byte strings, but the
      #     place to wrap is determined according to the length in bytes or
