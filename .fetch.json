@@ -1,0 +1,8 @@
+[
+    {
+        "sha256": "82251c424223120ba58b3085c6a2a8ca69a78245282c9019dd5a39848ace079c",
+        "target": "choose-mirror.pl",
+        "timestamp": "2026-06-10T13:22:40+02:00",
+        "url": "https://gitlab.com/comprehensive-tex-archive-network/ctan-mirror/-/raw/main/ctan-mirror-choose/choose-mirror.pl?ref_type=heads"
+    }
+]
