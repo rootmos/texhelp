@@ -16,7 +16,6 @@ jobs:
         image: ${{ matrix.distro }}:latest
     env:
       DEPS_DISTRO: ${{ matrix.distro }}
-      TEXHELP_MIRROR: https://mirror.math.princeton.edu/pub/CTAN
     steps:
     - name: Check out preparation files
       uses: actions/checkout@v6
@@ -34,7 +33,7 @@ jobs:
       run: .github/deps -b
 
     - name: Run installer
-      run: ./install.sh
+      run: env TEXHELP_MIRROR= ./install.sh
 
     - name: Try activating the environment
       run: |

@@ -76,7 +76,7 @@ elif [ "$ACTION" = "latexmk" ]; then
 
     latexmk "${ARGs[@]}" "$@"
 elif [ "$ACTION" = "clean" ] || [ "$ACTION" = "deepclean" ]; then
-    rm -vf *.aux *.bbl *.bcf *.blg *.fls *.run.xml *.fdb_latexmk *.log *.out *.pdf *.dvi *-SAVE-ERROR
+    rm -vf *.aux *.bbl *.bcf *.blg *.fls *.run.xml ./*.fdb_latexmk *.log *.out *.pdf *.dvi ./*-SAVE-ERROR
     if [ "$ACTION" = "deepclean" ]; then
         rm -rf "$ROOT"
         echo 1>&2 "removed: '$ROOT'"

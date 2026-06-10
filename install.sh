@@ -4,7 +4,7 @@ set -o nounset -o pipefail -o errexit
 
 SCRIPT_DIR=$(realpath "$0" | xargs dirname)
 
-DESTDIR=${1-${TEXHELP_DESTDIR-$(realpath .)/.texhelp}}
+DESTDIR=${TEXHELP_DESTDIR-$(realpath .)/.texhelp}
 DOTDIR=$DESTDIR/dot
 
 if [ -e "$DESTDIR" ]; then
@@ -27,6 +27,27 @@ TMP=$(mktemp -d)
 trap 'rm -rf $TMP' EXIT
 
 TEXHELP_MIRROR=${TEXHELP_MIRROR-https://mirror.ctan.org}
+if [[ -z "$TEXHELP_MIRROR" ]]; then
+    "$SCRIPT_DIR/choose-mirror.pl" --max 0 --protocol https --format ndjson >"$TMP/mirrors.json"
+    i=0
+    export TEXHELP_DESTDIR TEXHELP_FORCE
+    while true; do
+        jq --slurp ".[$i]" "$TMP/mirrors.json" >"$TMP/mirror.json"
+        i=$((i+1))
+        if [[ $(jq -r '.status' "$TMP/mirror.json") != "ok" ]]; then
+            continue
+        fi
+        if [[ $(jq -r '.latency_ms' "$TMP/mirror.json") = "0" ]]; then
+            continue
+        fi
+        cat 1>&2 "$TMP/mirror.json"
+        if env TEXHELP_MIRROR="$(jq -r '.urls[0]' "$TMP/mirror.json" | sed 's,/$,,')" "$SCRIPT_DIR/install.sh"; then
+            exit 0
+        fi
+        rm -rf "$DESTDIR"
+    done
+    exit 1
+fi
 echo 1>&2 "using mirror: $TEXHELP_MIRROR"
 
 if [ -z "${TEXHELP_HISTORIC_MIRROR-}" ]; then
@@ -47,7 +68,7 @@ sed -i 's,ftp://tug.org,'"$TEXHELP_HISTORIC_MIRROR"',' "$FETCH_MANIFEST"
 
 YEAR=${TEXHELP_YEAR-2026}
 TARBALL=tl$YEAR.tar.gz
-"$SCRIPT_DIR/fetch" --log=info --root="$SCRIPT_DIR" download --update "$TARBALL" >/dev/null
+"$SCRIPT_DIR/fetch" --log=info --root="$SCRIPT_DIR" download --timeout=60 --update "$TARBALL" >/dev/null
 
 tar xf "$SCRIPT_DIR/$TARBALL" -C "$TMP" --strip-components=1
 
@@ -66,6 +87,7 @@ PLATFORM=$(./install-tl -print-platform)
 
 ARGS=()
 ARGS+=("-profile=$PROFILE")
+ARGS+=(-strict -no-continue)
 
 if [ -z "${TEXHELP_REPOSITORY-}" ]; then
     TEXHELP_REPOSITORY="$TEXHELP_MIRROR/systems/texlive/tlnet"

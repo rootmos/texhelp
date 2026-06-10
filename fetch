@@ -1,27 +1,30 @@
 #!/usr/bin/env python3
-# 2026-02-03T22:27:09+01:00 SHA-256:4767e6856d36febde73cd3c1dfbb457317c1486ed3a9324edc102791e8c15ee8
+# 2026-06-11T06:18:17+02:00 SHA-256:c10d338b5f0c1d215a9fdbc5583445290ec9e4ec20f04ee52ffe0792a5c2c1fc
 
 import argparse
 import contextlib
 import datetime
 import hashlib
 import json
+import logging
 import os
 import random
+import shutil
 import stat
 import string
+import subprocess
 import sys
 import urllib.request
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Self, Tuple
 
-import logging
 logger = logging.getLogger(__name__)
 
 whoami = "fetch"
 env_prefix = f"{whoami.upper()}_"
 
-def env(var, default=None):
+def env(var, default=None) -> str | None:
     return os.environ.get(env_prefix + var, default)
 
 def chmod_plus_x(path):
@@ -50,6 +53,7 @@ def parse_args():
             formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     parser.add_argument("-v", "--version", action="version", version=figure_out_version())
+    parser.add_argument("-q", "--quiet", action="store_true")
 
     parser.add_argument("--log", default=env("LOG_LEVEL", "WARN"), help="set log level")
 
@@ -61,20 +65,31 @@ def parse_args():
 
     subparsers = parser.add_subparsers(dest="cmd")
 
+    def add_timeout_arg(p):
+        p.add_argument("-T", "--timeout", type=float)
+
     add_cmd = subparsers.add_parser("add")
     add_cmd.add_argument("--sha256", metavar="SHA256")
     add_cmd.add_argument("url", metavar="URL")
     add_cmd.add_argument("target", metavar="TARGET", nargs="?")
+    add_timeout_arg(add_cmd)
 
     verify_cmd = subparsers.add_parser("verify")
     verify_cmd.add_argument("target", metavar="TARGET", nargs="*")
+    add_timeout_arg(verify_cmd)
 
     download_cmd = subparsers.add_parser("download")
     download_cmd.add_argument("-u", "--update", action="store_true", help="redownload and update the manifest")
     download_cmd.add_argument("target", metavar="TARGET", nargs="*")
+    add_timeout_arg(download_cmd)
 
     steal_this_script_cmd = subparsers.add_parser("steal-this-script")
     steal_this_script_cmd.add_argument("output", metavar="OUTPUT", nargs="?")
+
+    subparsers.add_parser("ls")
+
+    walk_cmd = subparsers.add_parser("walk")
+    walk_cmd.add_argument("args", nargs="*")
 
     return parser.parse_args()
 
@@ -92,18 +107,20 @@ def setup_logger(level):
 
     return l
 
-def download(url, target=None):
+def download(url, target=None, timeout: float | None = None):
     m = hashlib.sha256()
     if target is None:
         logger.info("fetching: %s", url)
     else:
         logger.info("fetching: %s -> %s", url, target.name)
 
-    hdr = {
-        "User-Agent": env("USER_AGENT", whoami),
-    }
-    req = urllib.request.Request(url, headers=hdr)
-    with urllib.request.urlopen(req) as f:
+    ua = env("USER_AGENT", whoami)
+    assert ua is not None
+    req = urllib.request.Request(url, headers={
+        "User-Agent": ua,
+    })
+
+    with urllib.request.urlopen(req, timeout=timeout) as f:
         while True:
             bs = f.read(4096)
             if len(bs) == 0:
@@ -198,16 +215,17 @@ class Item:
     def exists(self, root=None):
         return os.path.exists(self.path(root))
 
-    def download(self, root=None, update=None) -> Self:
+    def download(self, root=None, update=None, timeout: float | None = None) -> Self:
         path = self.path(root)
-        self.timestamp = datetime.datetime.now().astimezone()
+        if update:
+            self.timestamp = datetime.datetime.now().astimezone()
         os.makedirs(os.path.dirname(path), exist_ok=True)
         self.local = path
 
         tmp = path + f".{whoami}.{fresh_salt()}"
         try:
             with open(tmp, "xb") as f:
-                fetched = download(self.url, f)
+                fetched = download(self.url, f, timeout=timeout)
 
             if self.sha256 is not None and not update:
                 if fetched != self.sha256:
@@ -287,15 +305,16 @@ def do_add(args):
     if target in manifest:
         item = manifest[target]
         if not item.exists(root=root):
-            item = item.download(root=root)
+            item = item.download(root=root, timeout=args.timeout)
         item = item.verify(url=args.url, sha256=args.sha256, root=root)
     else:
-        item = Item(url=args.url, sha256=args.sha256, target=target, manifest=manifest)
-        item.download(root=root)
+        item = Item(url=args.url, sha256=args.sha256, target=target, manifest=manifest, timestamp=datetime.datetime.now().astimezone())
+        item.download(root=root, timeout=args.timeout)
         manifest.add(item)
 
     assert item.local is not None
-    print(os.path.relpath(item.local, start=root))
+    if not args.quiet:
+        print(os.path.relpath(item.local, start=root))
 
     manifest.save()
 
@@ -311,10 +330,12 @@ def do_download(args):
         items = manifest.items()
 
     for i in items:
-        i.download(root=root, update=args.update)
-        print(os.path.relpath(i.local, start=root))
+        i.download(root=root, update=args.update, timeout=args.timeout)
+        if not args.quiet:
+            print(os.path.relpath(i.local, start=root))
 
-    manifest.save()
+    if args.update:
+        manifest.save()
 
 def do_verify(args):
     root, manifest = resolve_root_and_manifest(args)
@@ -329,7 +350,8 @@ def do_verify(args):
 
     for i in items:
         i.verify(root=root)
-        print(os.path.relpath(i.local, start=root))
+        if not args.quiet:
+            print(os.path.relpath(i.local, start=root))
 
 def do_steal_this_script(args):
     if args.output is None:
@@ -357,9 +379,57 @@ def do_steal_this_script(args):
     if args.output is not None:
         chmod_plus_x(args.output)
 
+def do_list(args):
+    root, manifest = resolve_root_and_manifest(args)
+
+    for i in manifest.items():
+        print(os.path.relpath(i.path(), start=root))
+
+def walk() -> Path | None:
+    git = shutil.which("git")
+
+    ps = [ Path.cwd() ]
+
+    while ps:
+        p = ps.pop()
+        logger.debug("walking: %s", p)
+
+        for f in [p / "fetch", p / "tools" / "fetch"]:
+            logger.debug("testing: %s", f)
+            if f.is_file(follow_symlinks=True) and os.access(f, os.X_OK, follow_symlinks=True):
+                return f
+
+        if git is not None:
+            try:
+                [r] = subprocess.check_output([git, "-C", p, "rev-parse", "--show-toplevel"], text=True, stderr=subprocess.DEVNULL).splitlines()
+                r = Path(r)
+                if r != p:
+                    ps.append(r)
+                    continue
+            except subprocess.CalledProcessError:
+                pass
+
+        r = p.parent
+        if r != p:
+            ps.append(r)
+
+    return None
+
+def do_walk(args):
+    p = walk()
+    if p is None:
+        logger.error("unable to find a fetch executable")
+        sys.exit(1)
+
+    if args == []:
+        print(p)
+    else:
+        cmdline = [ p ] + args.args
+        logger.debug("running: %s", cmdline)
+        subprocess.check_call(cmdline)
+
 def main():
     args = parse_args()
-    global logger
     logger = setup_logger(args.log.upper())
     logger.debug("args: %s", args)
 
@@ -371,6 +441,10 @@ def main():
         do_download(args)
     elif args.cmd == "steal-this-script":
         do_steal_this_script(args)
+    elif args.cmd == "ls":
+        do_list(args)
+    elif args.cmd == "walk":
+        do_walk(args)
     else:
         raise RuntimeError(f"unexpected command: {args.cmd}")
 

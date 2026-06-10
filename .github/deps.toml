@@ -1,7 +1,7 @@
 [build]
-archlinux = [ "patch" ]
-alpine = [ "perl", "wget", "patch" ]
-ubuntu = [ "wget", "patch" ]
+archlinux = [ "patch", "fping", "jq", "perl-list-moreutils", "rsync" ]
+alpine = [ "perl", "wget", "patch", "fping", "jq", "perl-list-moreutils", "rsync", "curl" ]
+ubuntu = [ "wget", "patch", "fping", "jq", "liblist-moreutils-perl", "rsync", "curl" ]
 
 [tests]
 archlinux = [ "poppler" ]
