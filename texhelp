@@ -82,11 +82,20 @@ elif [ "$ACTION" = "clean" ] || [ "$ACTION" = "deepclean" ]; then
         echo 1>&2 "removed: '$ROOT'"
     fi
 elif [ "$ACTION" = "deps" ] || [ "$ACTION" = "install" ]; then
-    DEPS=$(resolve "tl.deps" || true)
-    if [ -n "${DEPS-}" ]; then
-        echo 1>&2 "TeX Live dependencies spec: $DEPS"
-        sed 's/#.*//' "$DEPS" | sed '/^$/d' | xargs tlmgr install
-    fi
+    uncomment() {
+        sed 's/#.*//' | sed '/^$/d'
+    }
+
+    DEPS=()
+    for f in "$@"; do
+        mapfile -t CMDLINE < <(uncomment <"$f")
+        DEPS+=("${CMDLINE[@]}")
+    done
+
+    mapfile -t LOCAL < <(resolve "tl.deps" || true | uncomment)
+    DEPS+=("${LOCAL[@]}")
+
+    tlmgr install "${DEPS[@]}"
 elif [ "$ACTION" = "update" ]; then
     tlmgr update --all
 elif [ "$ACTION" = "exec" ]; then
