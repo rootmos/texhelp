@@ -83,17 +83,20 @@ elif [ "$ACTION" = "clean" ] || [ "$ACTION" = "deepclean" ]; then
     fi
 elif [ "$ACTION" = "deps" ] || [ "$ACTION" = "install" ]; then
     uncomment() {
-        sed 's/#.*//' | sed '/^$/d'
+        sed 's/\s*#.*//' "${1--}" | sed '/^\s*$/d'
     }
 
     DEPS=()
     for f in "$@"; do
-        mapfile -t CMDLINE < <(uncomment <"$f")
+        mapfile -t CMDLINE < <(uncomment "$f")
         DEPS+=("${CMDLINE[@]}")
     done
 
-    mapfile -t LOCAL < <(resolve "tl.deps" || true | uncomment)
-    DEPS+=("${LOCAL[@]}")
+    LOCAL=$(resolve "tl.deps" || true)
+    if [[ -n $LOCAL ]]; then
+        mapfile -t LOCAL < <(uncomment "$LOCAL")
+        DEPS+=("${LOCAL[@]}")
+    fi
 
     tlmgr install "${DEPS[@]}"
 elif [ "$ACTION" = "update" ]; then
